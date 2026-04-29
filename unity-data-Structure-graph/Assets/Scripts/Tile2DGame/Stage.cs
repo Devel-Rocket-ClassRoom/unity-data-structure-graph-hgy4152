@@ -90,6 +90,7 @@ public class Stage : MonoBehaviour
             if(player != null)
             {
                 player.MoveTo(index);
+                player.isMoving = false;
             }
         }
     }

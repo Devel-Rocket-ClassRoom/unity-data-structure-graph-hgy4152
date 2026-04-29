@@ -9,7 +9,7 @@ public class PlayerMovement : MonoBehaviour
 {
     private Stage stage;
     private Animator anim;
-    private bool isMoving;
+    public bool isMoving;
     private int currentTileId;
 
     private Coroutine coMove;
@@ -43,8 +43,16 @@ public class PlayerMovement : MonoBehaviour
     }
     public void MoveTo(int tileId)
     {
+
+
         if (!isMoving)
         {
+            if (coMove != null)
+            {
+                StopCoroutine (coMove);
+                coMove = null;
+            }
+
             coMove = StartCoroutine(CoMove(tileId));
 
         }
