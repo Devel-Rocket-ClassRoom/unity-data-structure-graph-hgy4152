@@ -80,6 +80,8 @@ public class Map
 
         }
 
+
+
     }
 
     public void ShuffleTiles(Tile[] tiles)
@@ -93,27 +95,46 @@ public class Map
 
     public void DecorateTiles(Tile[] tiles, float percent, TileTypes tileType)
     {
-        ShuffleTiles(tiles);
 
         int total = Mathf.FloorToInt(tiles.Length * percent);
 
-        if(TileTypes.Castle == tileType)
-        {
-            tiles[total/2].autoTileId = (int)tileType;
-            return;
-        }
+        ShuffleTiles(tiles);
 
         for (int i = 0; i < total; ++i)
         {
+            SetWeight(tiles[i], tileType);
+
             if (tileType == TileTypes.Empty)
             {
                 tiles[i].ClearAdjacent();
+                tiles[i].weight = -1;
             }
 
             tiles[i].autoTileId = (int)tileType;
+            
         }
     }
 
+    private void SetWeight(Tile tile, TileTypes tileTypes)
+    {
+        // TileTypes. Grass(15)=1, Tree(16)=2, Hills(17)=4, Mountains(18)=MAX(통과 불가), Towns(19)=1, Castle(20)=1, Monster(21)=1.
+        switch ((int)tileTypes)
+        {
+            case 16:
+                tile.weight = 2;
+                break;
+            case 17:
+                tile.weight = 4;
+                break;
+            case 18:
+                tile.weight = -1;
+                break;
+            default:
+                tile.weight = 1;
+                break;
+        }
+
+    }
 
     public bool CreateIsland(
         float erodePercent,
@@ -126,17 +147,25 @@ public class Map
         float monsterPercent
         )
     {
+        for(int i = 0; i < CoastTiles.Length; i++)
+        {
+            CoastTiles[i].isCost = true;
+        }
 
-
-        for(int i = 0; i < erodeIterations; ++i)
+        for (int i = 0; i < erodeIterations; ++i)
         {
             // 해안선에 따라 구멍
             DecorateTiles(CoastTiles, erodePercent, TileTypes.Empty);
         }
 
-        DecorateTiles(LandTiles, 1, TileTypes.Castle);
+        var landList = LandTiles; 
+        if (landList.Length > 0)
+        {
+            ShuffleTiles(landList);
+            castleTile = landList[0];
+            castleTile.autoTileId = (int)TileTypes.Castle;
+        }
 
-        // 앞에서 너무 많이 뽑아쓰면 나중에 지을 공간이 없을 수 있음
         DecorateTiles(LandTiles, lakePercent, TileTypes.Empty);
         DecorateTiles(LandTiles, treePercent, TileTypes.Tree);
         DecorateTiles(LandTiles, hillPercent, TileTypes.Hills);
@@ -144,7 +173,6 @@ public class Map
         DecorateTiles(LandTiles, townPercent, TileTypes.Towns);
         DecorateTiles(LandTiles, monsterPercent, TileTypes.Monster);
 
-        castleTile = tiles.Where(t => t.autoTileId == (int)TileTypes.Castle).ToArray()[0];
         var towns = tiles.Where(t => t.autoTileId == (int)TileTypes.Towns).ToArray();
         startTile = towns[Random.Range(0, towns.Length)];
 

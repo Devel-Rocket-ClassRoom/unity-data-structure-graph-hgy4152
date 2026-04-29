@@ -69,26 +69,29 @@ public class Stage : MonoBehaviour
         // 마우스 위치를 TileId로 변환
         int index = ScreenPosToTileId(Input.mousePosition);
 
-        // 인덱스가 유효한 경우만 처리
         if (index >= 0 && index < tileObjs.Length)
         {
             GameObject currentTile = tileObjs[index];
 
-            // 이전에 강조하던 타일과 현재 타일이 다를 때만 갱신
             if (prev != currentTile)
             {
-                // 이전에 선택되었던 타일이 있다면 원래 색상(흰색)으로 복구
                 if (prev != null)
                 {
                     prev.GetComponent<SpriteRenderer>().color = Color.white;
                 }
 
-                // 새로운 타일을 초록색으로 변경
                 currentTile.GetComponent<SpriteRenderer>().color = Color.green;
                 prev = currentTile;
             }
         }
 
+        if(Input.GetMouseButtonDown(0))
+        {
+            if(player != null)
+            {
+                player.MoveTo(index);
+            }
+        }
     }
     private void ResetStage()
     {
@@ -107,6 +110,7 @@ public class Stage : MonoBehaviour
 
         CreatePlayer();
         CreateGrid();
+
     }
 
     private void CreatePlayer()
@@ -118,13 +122,14 @@ public class Stage : MonoBehaviour
         player = Instantiate(playerPrefab);
         int tileId = map.startTile.id;
         
-        player.MoveTo(tileId);
+        player.StartPos(tileId);
 
 
     }
+
+    public int range = 3;
     public void VisitCheck(int tileId)
     {
-        int range = 3;
         int centerX = tileId % mapWidth;
         int centerY = tileId / mapWidth;
 
@@ -140,7 +145,7 @@ public class Stage : MonoBehaviour
 
                 int targetIndex = (y * mapWidth) + x;
 
-                if (targetIndex >= 0 && targetIndex < map.tiles.Length)
+                if(targetIndex >= 0 && targetIndex < map.tiles.Length)
                 {
                     map.tiles[targetIndex].isVisited = true;
                     if (tileObjs != null)
@@ -148,9 +153,32 @@ public class Stage : MonoBehaviour
                         DecorateTile(targetIndex);
                     }
                 }
+
+
             }
         }
 
+        // visit 경계선 변경
+        int radius = range + 1;
+        for (int y = centerY - radius; y <= centerY + radius; y++)
+        {
+            for (int x = centerX - radius; x <= centerX + radius; x++)
+            {
+                if (y == centerY - radius || y == centerY + radius || x == centerX - radius || x == centerX + radius)
+                {
+                    int targetIndex = (y * mapWidth) + x;
+
+                    if (targetIndex >= 0 && targetIndex < map.tiles.Length)
+                    {
+                        map.tiles[targetIndex].UpdateFowTileId();
+                        if (tileObjs != null)
+                        {
+                            DecorateTile(targetIndex);
+                        }
+                    }
+                }
+            }
+        }
     }
 
 
@@ -198,7 +226,7 @@ public class Stage : MonoBehaviour
         var ren = tileGo.GetComponent<SpriteRenderer>();
         if (tile.isVisited)
         {
-
+            // 방문할 때 주변 미 방문 지역은 안개처리 해볼려했는데.. 한번 해보기
             if (tile.autoTileId != (int)TileTypes.Empty)
             {
                 ren.sprite = islandSprites[tile.autoTileId];
@@ -210,7 +238,6 @@ public class Stage : MonoBehaviour
         }
         else
         {
-
             ren.sprite = FowSprites[tile.fowTileId];
         }
     }
@@ -228,12 +255,8 @@ public class Stage : MonoBehaviour
 
         var first = FirstPos;
 
-        float posX = FirstPos.x - (tileSize.x * 0.5f);
-        float posY = FirstPos.y + (tileSize.y * 0.5f);
-
-        // 이제 진짜 Corner 좌표를 기준으로 나누어 인덱스 추출
-        int x = Mathf.FloorToInt((worldPos.x - posX) / tileSize.x);
-        int y = Mathf.FloorToInt((posY - worldPos.y) / tileSize.y);
+        int x = Mathf.FloorToInt(((worldPos.x - FirstPos.x) / tileSize.x) + 0.5f);
+        int y = Mathf.FloorToInt(((FirstPos.y - worldPos.y) / tileSize.y) + 0.5f);
 
         x = Mathf.Clamp(x, 0, mapWidth - 1);
         y = Mathf.Clamp(y, 0, mapHeight - 1);
